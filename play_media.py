@@ -117,6 +117,10 @@ class Media:
 
     def play(self, from_s=0):
         """Play from the given offset (seconds). Restarts if already playing."""
+        # After the media ends, the player sits in State.Ended and a
+        # bare play() is a no-op. stop() resets it so playback can start.
+        if self._player.get_state() == vlc.State.Ended:
+            self._player.stop()
         self._player.play()
         if from_s:
             # set_time only takes effect once playback has started
@@ -208,16 +212,13 @@ if __name__ == "__main__":
         sys.exit(1)
 
     mode, path = sys.argv[1], sys.argv[2]
-    m = play_video(path, fullscreen=True) if mode == "video" \
-        else play_sound(path)
+    m = Media(path, fullscreen=True) if mode == "video" \
+        else Media(path)
+    
+    for i in range(2):
+        print(f"Iteration {i+1}: playing {path}")
+        m.play()
+        time.sleep(3)
 
-    print(f"{m} - playing; pause in 3s")
-    time.sleep(3)
-    m.pause()
-    print(f"{m} - paused; resume in 2s")
-    time.sleep(2)
-    m.resume()
-    print(f"{m} - resumed; stop in 3s")
-    time.sleep(3)
     m.stop()
     m.close()
