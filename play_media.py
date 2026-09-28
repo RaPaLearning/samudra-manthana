@@ -25,7 +25,11 @@ Story usage (with pacer.py):
         video.stop()
 
 A paused player remembers its position, so resume() continues exactly
-where it stopped; play() restarts from the beginning.
+where it stopped; play() seeks and restarts from the beginning.
+
+The player instance is opened once per file and kept alive: repeated
+play_sound()/play_video() calls for the same file reuse the existing
+player (seek to start + play) instead of closing and re-opening it.
 
 Usage:
     python play_media.py <sound|video> <filename>
@@ -79,28 +83,51 @@ class Media:
         length           total length in seconds
     """
 
-    def __init__(self, filename, *, fullscreen=False, volume=100, loop=False):
+    def __init__(self, filename, *, fullscreen=True, volume=100, loop=False):
         self.filename = os.path.abspath(filename)
         if not os.path.isfile(self.filename):
             raise FileNotFoundError(self.filename)
 
-        self._player = vlc.MediaPlayer(self.filename)
+        self.fullscreen = fullscreen
+
+        # Create the instance with --fullscreen so the video OUTPUT is
+        # born fullscreen. Calling set_fullscreen() on an existing vout
+        # (Windows) only maximizes the window and leaves the title bar.
+        if fullscreen:
+            self._instance = vlc.Instance("--fullscreen")
+            media = self._instance.media_new(self.filename)
+            self._player = self._instance.media_player_new()
+            self._player.set_media(media)
+        else:
+            self._instance = None
+            self._player = vlc.MediaPlayer(self.filename)
+
+        self._released = False  # close() called?
         self._player.audio_set_volume(volume)
         self.loop = loop
-        if fullscreen:
-            self._player.set_fullscreen(True)
 
         # Loop: restart automatically when the media ends.
-        if loop:
+        if loop or fullscreen:
             em = self._player.event_manager()
-            em.event_attach(vlc.EventType.MediaPlayerEndReached,
-                            self._on_end)
+            if loop:
+                em.event_attach(vlc.EventType.MediaPlayerEndReached,
+                                self._on_end)
+            if fullscreen:
+                em.event_attach(vlc.EventType.MediaPlayerVout,
+                                self._on_vout)
 
     # -------------------- callbacks -------------------- #
 
     def _on_end(self, _event):
         # Called from VLC's thread; a fresh play() restarts the file.
         self._player.play()
+
+    def _on_vout(self, _event):
+        # A video output just appeared. If the --fullscreen instance flag
+        # did not take (e.g. window-manager interference), re-assert
+        # fullscreen from VLC's own thread.
+        if self.fullscreen and not self._player.get_fullscreen():
+            self._player.set_fullscreen(True)
 
     # -------------------- control -------------------- #
 
@@ -116,12 +143,15 @@ class Media:
         return False
 
     def play(self, from_s=0):
-        """Play from the given offset (seconds). Restarts if already playing."""
+        """Play from the given offset (seconds, default 0 = beginning).
+        Always seeks, so calling it again restarts from the offset."""
         self._player.play()
-        if from_s:
-            # set_time only takes effect once playback has started
+        # set_time/fullscreen only take effect once playback has started
+        self._wait_state({vlc.State.Playing, vlc.State.Paused})
+        self._player.set_time(int(from_s * 1000))
+        if self.fullscreen and not self._player.get_fullscreen():
+            self._player.set_fullscreen(True)
             self._wait_state({vlc.State.Playing, vlc.State.Paused})
-            self._player.set_time(int(from_s * 1000))
 
     def pause(self):
         """Freeze playback. Position is kept for resume()."""
@@ -135,7 +165,10 @@ class Media:
             self._wait_state({vlc.State.Playing})
 
     def stop(self):
-        """Stop playback and reset to the beginning."""
+        """Stop playback and reset to the beginning. Safe to call after
+        close() (no-op then)."""
+        if self._released:
+            return
         self._player.stop()
 
     def play_from(self, seconds):
@@ -171,6 +204,11 @@ class Media:
         return True
 
     def close(self):
+        """Stop playback and release the player. Idempotent: calling it
+        twice (or calling stop() afterwards) is safe."""
+        if self._released:
+            return
+        self._released = True
         self._player.stop()
         self._player.release()
 
@@ -181,21 +219,56 @@ class Media:
 
 
 # --------------------------------------------------------------------- #
-# one-shot convenience helpers (used like the old startfile version)
+# one-shot convenience helpers
 # --------------------------------------------------------------------- #
 
+_current = None  # handle of the media started most recently
+_media_cache = {}  # abspath -> Media; one player instance per file
+
+
+def _register(handle):
+    """Remember `handle` as the currently playing media and cache it by
+    file path so later requests for the same file reuse the same player
+    (seek + play) instead of closing and re-opening it."""
+    global _current
+    _media_cache[handle.filename] = handle
+    _current = handle
+    return handle
+
+
 def play_sound(filename):
-    """Play an audio file invisibly and return the Media handle."""
+    """Play an audio file invisibly and return the Media handle. If the
+    file already has a live player, it is seeked back and played again
+    (the instance is NOT closed and re-opened)."""
+    path = os.path.abspath(filename)
+    m = _media_cache.get(path)
+    if m is not None:
+        m.play(0)
+        return _register(m)
     m = Media(filename)
     m.play()
-    return m
+    return _register(m)
 
 
-def play_video(filename, *, fullscreen=False):
-    """Play a video file in a video window and return the Media handle."""
+def play_video(filename, *, fullscreen=True):
+    """Play a video file in a full-screen video window and return the
+    Media handle. If the file already has a live player, it is seeked
+    back and played again (the instance is NOT closed and re-opened)."""
+    path = os.path.abspath(filename)
+    m = _media_cache.get(path)
+    if m is not None:
+        m.play(0)
+        return _register(m)
     m = Media(filename, fullscreen=fullscreen)
     m.play()
-    return m
+    return _register(m)
+
+
+def stop_media():
+    """Stop whatever these helpers started, keeping the player instance
+    alive for the next play (no-op if none)."""
+    if _current is not None:
+        _current.stop()
 
 
 # --------------------------------------------------------------------- #

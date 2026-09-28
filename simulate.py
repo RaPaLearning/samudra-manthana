@@ -26,7 +26,8 @@ import time
 os.environ["STUB_ARDUINO"] = "1"
 
 from arduino_ws2812b import get_controller
-from pacer import Pacer, TUG_START, TUG_END
+from mantha import STORY_STEPS
+from pacer import Pacer
 
 POLL_INTERVAL_S = 0.25  # peek the TAB key every 250 ms
 
@@ -140,21 +141,9 @@ def clear_keyboard_buffer():
             pass
 
 
-def make_story():
-    """Demo story: one step per tug. The Pacer calls each step with
-    TUG_START when the tug begins and TUG_END when it ends."""
-    steps = []
-    for i in range(4):
-        def step(event, i=i):
-            phase = "begins" if event == TUG_START else "ends"
-            print(f"[story] step {i} {phase} (lights, sound, ...)")
-        steps.append(step)
-    return steps
-
-
 def main():
     strip = get_controller()
-    pacer = Pacer(make_story(), strip=strip)
+    pacer = Pacer(STORY_STEPS, strip=strip)
 
     feed_tugs(strip)
 
