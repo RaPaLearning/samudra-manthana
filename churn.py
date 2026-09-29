@@ -13,6 +13,7 @@ TUG_START when the tug begins and TUG_END when it ends.
 
 from pacer import TUG_START
 from play_media import Media
+from kurma_pulse import background_pulse
 
 TURTLE_PURR = "media/turtle-purr.mp3"
 NEELAKANTHA = "media/neelakantha.mp4"
@@ -28,6 +29,7 @@ def make_story():
         if event == TUG_START:
             print("[story] first purr starts")
             purr.play()
+            background_pulse(pulses=2)
 
     def step_second_purr(event):
         if event == TUG_START:
