@@ -6,16 +6,15 @@ Protocol (from the .ino):
 
 Exports:
     ArduinoStrip  - real serial connection to the Nano (auto-detects port)
-    StubStrip     - stub that just prints what it would send
-    get_controller() - returns a StubStrip if STUB_ARDUINO is set in the
-                       environment, otherwise ArduinoStrip
+    get_controller() - returns a controller based on the STUB_* environment
+                       variables (see the docstring there; the stub classes
+                       themselves live in arduino_stub.py)
 
 Requires:
     pip install pyserial
 """
 
 import os
-from collections import deque
 
 from serial.tools import list_ports
 
@@ -26,7 +25,7 @@ except ImportError:  # allow importing the stub without pyserial installed
 
 BAUD_RATE = 9600
 
-__all__ = ["ArduinoStrip", "StubStrip", "get_controller", "find_arduino", "BAUD_RATE"]
+__all__ = ["ArduinoStrip", "get_controller", "find_arduino", "BAUD_RATE"]
 
 
 def find_arduino(vid_pids=(("1A86", "7523"),   # CH340 clone (most Nanos)
@@ -61,58 +60,34 @@ def find_arduino(vid_pids=(("1A86", "7523"),   # CH340 clone (most Nanos)
     raise RuntimeError("No plausible Arduino candidates found.")
 
 
-class StubStrip:
-    """Drop-in stand-in for ArduinoStrip: prints commands instead of sending."""
-
-    def __init__(self, port=None, quiet=False):
-        self.port = port or "STUB"
-        self.quiet = quiet
-        self._pending = deque()  # lines queued via simulate_activity()
-        if not self.quiet:
-            print(f"[STUB] STUB_ARDUINO is set - using stub on '{self.port}'")
-
-    def send_command(self, start, end, r, g, b):
-        cmd = f">{start} {end} {r} {g} {b}<"
-        if not self.quiet:
-            print(f"[STUB] {cmd}")
-
-    def simulate_activity(self, text):
-        """Queue a line that the next read_activity() call will return."""
-        self._pending.append(str(text))
-
-    def read_activity(self):
-        """Return the next simulated Arduino line, or None if the queue is empty."""
-        if not self._pending:
-            return None
-        line = self._pending.popleft()
-        if not self.quiet:
-            print(f"[STUB] <- {line}")
-        return line
-
-    def close(self):
-        pass
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc, tb):
-        self.close()
-
-
 class ArduinoStrip:
-    """Encapsulates the serial connection to the WS2812B controller."""
+    """Encapsulates the serial connection to the WS2812B controller.
+
+    The underlying serial connection is a class-level (static) resource:
+    it is opened once on the first ArduinoStrip and shared by every
+    instance afterwards, so the COM port is never opened a second time
+    (which the OS would reject while it is already open).
+    """
+
+    _ser = None  # shared, opened once for the whole process
 
     def __init__(self, port=None):
         """
         port: serial device path (e.g. 'COM3', '/dev/ttyUSB0').
-              If None, auto-detect the Arduino.
+              If None, auto-detect the Arduino. Only used the first
+              time the connection is opened; later instances reuse it.
         """
-        if serial is None:
-            raise RuntimeError("pyserial is not installed (pip install pyserial)")
-        if port is None:
-            self.ser = find_arduino()
+        cls = ArduinoStrip
+        if cls._ser is not None and cls._ser.is_open:
+            self.ser = cls._ser  # reuse the already-open static connection
         else:
-            self.ser = serial.Serial(port, BAUD_RATE, timeout=1)
+            if serial is None:
+                raise RuntimeError("pyserial is not installed (pip install pyserial)")
+            if port is None:
+                cls._ser = find_arduino()
+            else:
+                cls._ser = serial.Serial(port, BAUD_RATE, timeout=1)
+            self.ser = cls._ser
         self.port = self.ser.port
 
     def send_command(self, start, end, r, g, b):
@@ -134,22 +109,44 @@ class ArduinoStrip:
         return line or None
 
     def close(self):
-        if self.ser and self.ser.is_open:
-            self.ser.close()
+        """No-op on instances: the connection is shared (static) and stays
+        open for other instances. Use disconnect() to actually close it."""
+        pass
+
+    @classmethod
+    def disconnect(cls):
+        """Close the shared static serial connection (e.g. on program exit)."""
+        if cls._ser is not None and cls._ser.is_open:
+            cls._ser.close()
+        cls._ser = None
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc, tb):
-        self.close()
+        self.close()  # keeps the static connection open; see disconnect()
 
 
 def get_controller(port=None):
-    """Return a controller: StubStrip if STUB_ARDUINO is set, else ArduinoStrip.
+    """Return a controller based on the STUB_* environment variables.
 
-    With STUB_ARDUINO set, no serial port is opened at all, so the script can
-    be run/tested without the device attached.
+    STUB_ARDUINO  - full stub (StubStrip): prints strip commands, tug
+                    readings are simulated; no serial port is opened at
+                    all, so the script can run without the device.
+    STUB_STRIP    - only the strip is stubbed (StripStub): send_command()
+                    prints instead of sending; no serial port; no tugs.
+    STUB_TUG      - only the tugging is stubbed (TugStub): strip commands
+                    go to the real Arduino; tug readings are injected via
+                    simulate_activity() instead of being read from serial.
+    (none set)    - real ArduinoStrip.
     """
+    # Imported lazily: arduino_stub imports ArduinoStrip from this module.
+    from arduino_stub import StripStub, StubStrip, TugStub
+
     if os.environ.get("STUB_ARDUINO"):
         return StubStrip(port=port)
+    if os.environ.get("STUB_STRIP"):
+        return StripStub(port=port)
+    if os.environ.get("STUB_TUG"):
+        return TugStub(port=port)
     return ArduinoStrip(port=port)

@@ -1,9 +1,20 @@
 """
-Simulation harness for pacer.py: runs the Pacer without an Arduino.
+Simulation harness for pacer.py: runs the Pacer and feeds simulated tug
+readings (on TAB) into the strip via simulate_activity().
 
-Uses the StubStrip from arduino_ws2812b (STUB_ARDUINO is forced) and feeds
-simulated tug readings into it via simulate_activity(), so the whole
-detect-and-advance pipeline can be exercised with no device attached.
+The stubbing is chosen by the STUB_* environment variables (see
+get_controller() in arduino_ws2812b):
+
+    STUB_TUG=1 python simulate.py   # strip commands go to the REAL Arduino,
+                                    # tugs are simulated
+    STUB_STRIP=1 python simulate.py # strip commands are printed, and the
+                                    # simulated tugs are queued but never
+                                    # consumed (read_activity is a no-op)
+    python simulate.py              # full stub, no device needed
+                                    # (STUB_ARDUINO is forced if no STUB_*
+                                    # variable was set)
+
+So STUB_STRIP + STUB_TUG together behave like STUB_ARDUINO.
 
 Tug control:
     Hold the TAB key  -> the pull reading rises toward 300 (the tug).
@@ -22,8 +33,9 @@ import sys
 import threading
 import time
 
-# Force the stub before creating any controller.
-os.environ["STUB_ARDUINO"] = "1"
+# Default to the full stub, but let the user pick a granular one.
+if not any(os.environ.get(v) for v in ("STUB_ARDUINO", "STUB_STRIP", "STUB_TUG")):
+    os.environ["STUB_ARDUINO"] = "1"
 
 from arduino_ws2812b import get_controller
 from pacer import Pacer

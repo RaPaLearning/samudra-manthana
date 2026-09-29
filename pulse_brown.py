@@ -3,8 +3,9 @@
 Pulse the brightness of a WS2812B strip (driven by the Arduino Nano running
 ws2812b_serial_control.ino) between 30 and 120, in a warm brown color.
 
-Set the STUB_ARDUINO environment variable to run without the device
-attached (commands are printed to stdout instead of sent over serial).
+Set one of the STUB_* environment variables to run without (or partially
+without) the device attached - see get_controller() in arduino_ws2812b
+(STUB_ARDUINO = full stub, STUB_STRIP = print commands instead of sending).
 
 Requires:
     pip install pyserial

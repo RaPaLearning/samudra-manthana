@@ -59,7 +59,8 @@ class Pacer:
         story_steps:   array of callables, one per story step; each is
                        called with TUG_START or TUG_END.
         strip:         controller with read_activity(); defaults to
-                       get_controller() (stub when STUB_ARDUINO is set).
+                       get_controller() (granular stub via the STUB_*
+                       environment variables, see arduino_ws2812b).
         poll_interval: seconds between Arduino reads.
         window_size:   sliding window length (readings).
         delta:         threshold (in reading counts) for a rise or fall;
