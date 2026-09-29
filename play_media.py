@@ -185,24 +185,6 @@ class Media:
 
 
 # --------------------------------------------------------------------- #
-# one-shot convenience helpers (used like the old startfile version)
-# --------------------------------------------------------------------- #
-
-def play_sound(filename):
-    """Play an audio file invisibly and return the Media handle."""
-    m = Media(filename)
-    m.play()
-    return m
-
-
-def play_video(filename, *, fullscreen=False):
-    """Play a video file in a video window and return the Media handle."""
-    m = Media(filename, fullscreen=fullscreen)
-    m.play()
-    return m
-
-
-# --------------------------------------------------------------------- #
 # self-test / CLI
 # --------------------------------------------------------------------- #
 

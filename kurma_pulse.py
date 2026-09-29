@@ -9,7 +9,7 @@ from arduino_ws2812b import get_controller
 
 # Brown hue as normalized ratios (R > G > B, warm/chocolate tone).
 # The final RGB = ratio * brightness, so brightness 120 -> max channel 120.
-BROWN_RATIO = (1.0, 0.0, 1.0) #(1.0, 0.5, 0.17)  # ~ #7F3F16 scaled
+COLOR_RATIO = (1.0, 1.0, 1.0)
 MAX_BRIGHT = 200
 
 LED_START = 8
@@ -22,7 +22,8 @@ STEP_DELAY_S = 0.05 # 20 Hz refresh
 
 
 def pulse(start=LED_START, end=LED_END, period=PULSE_PERIOD_S,
-          bmin=BRIGHTNESS_MIN, bmax=BRIGHTNESS_MAX, pulses=None):
+          bmin=BRIGHTNESS_MIN, bmax=BRIGHTNESS_MAX, rgb_ratio=COLOR_RATIO,
+          pulses=None):
     """Pulse the strip brown between bmin and bmax brightness.
 
     pulses: number of full down->up->down cycles to run.
@@ -48,9 +49,9 @@ def pulse(start=LED_START, end=LED_END, period=PULSE_PERIOD_S,
                 (bmax - bmin) / 2 * (-math.cos(phase))
             brightness = int(round(brightness))
 
-            r = min(MAX_BRIGHT, int(round(BROWN_RATIO[0] * brightness)))
-            g = min(MAX_BRIGHT, int(round(BROWN_RATIO[1] * brightness)))
-            b = min(MAX_BRIGHT, int(round(BROWN_RATIO[2] * brightness)))
+            r = min(MAX_BRIGHT, int(round(rgb_ratio[0] * brightness)))
+            g = min(MAX_BRIGHT, int(round(rgb_ratio[1] * brightness)))
+            b = min(MAX_BRIGHT, int(round(rgb_ratio[2] * brightness)))
 
             strip.send_command(start, end, r, g, b)
             time.sleep(STEP_DELAY_S)
@@ -68,14 +69,15 @@ def pulse(start=LED_START, end=LED_END, period=PULSE_PERIOD_S,
 
 
 def background_pulse(start=LED_START, end=LED_END, period=PULSE_PERIOD_S,
-                     bmin=BRIGHTNESS_MIN, bmax=BRIGHTNESS_MAX, pulses=None):
+                     bmin=BRIGHTNESS_MIN, bmax=BRIGHTNESS_MAX, rgb_ratio=COLOR_RATIO,
+                     pulses=None):
     """Run pulse() in a daemon thread and return the thread handle.
 
     Daemon thread means it won't block the interpreter from exiting;
     call thread.join() if you want to wait for a finite number of pulses.
     """
     t = threading.Thread(target=pulse,
-                         args=(start, end, period, bmin, bmax, pulses),
+                         args=(start, end, period, bmin, bmax, rgb_ratio, pulses),
                          daemon=True)
     t.start()
     return t
@@ -91,7 +93,7 @@ def main():
     ap.add_argument("--pulses", type=int, default=None,
                     help="Number of pulse cycles (default: endless)")
     args = ap.parse_args()
-    pulse(args.start, args.end, args.period, args.bmin, args.bmax, args.pulses)
+    pulse(args.start, args.end, args.period, args.bmin, args.bmax, COLOR_RATIO, args.pulses)
 
 
 if __name__ == "__main__":
