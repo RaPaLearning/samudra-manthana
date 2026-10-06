@@ -42,7 +42,7 @@
 #include <Adafruit_NeoPixel.h>
 
 #define LED_PIN     6      // Data pin connected to D6
-#define NUM_LEDS    250     // Change this to match your actual strip length
+#define NUM_LEDS    299     // Change this to match your actual strip length
 #define BAUD_RATE   9600
 
 #define PROX_PIN          3    // E18-D80NK output, connected to D3
@@ -67,7 +67,7 @@ void setup() {
   strip.begin();
   strip.show(); // Initialize all pixels to 'off'
 
-  Serial.println(F("WS2812B control 2 ready."));
+  Serial.println(F("WS2812B control 3.299 ready."));
   Serial.println(F("Send commands like: >2 20 40 50 60<"));
   Serial.println(F("E18-D80NK on D3: !L = pull, !R = release"));
 }

@@ -48,7 +48,7 @@ class _TugQueue:
             return None
         line = self._pending.popleft()
         if not self._quiet:
-            print(f"[STUB] <- {line}")
+            print(f" [STUB] <- {line}")
         return line
 
 
@@ -61,12 +61,12 @@ class StripStub:
         self.port = port or "STUB"
         self.quiet = quiet
         if not self.quiet:
-            print(f"[STUB] STUB_STRIP is set - strip commands are printed, not sent")
+            print(f" [STUB] STUB_STRIP is set - strip commands are printed, not sent")
 
     def send_command(self, start, end, r, g, b):
         cmd = f">{start} {end} {r} {g} {b}<"
         if not self.quiet:
-            print(f"[STUB] {cmd}")
+            print(f" [STUB] {cmd}", end='\r')
 
     def read_activity(self):
         return None
@@ -89,7 +89,7 @@ class StubStrip(_TugQueue, StripStub):
         StripStub.__init__(self, port=port, quiet=quiet)
         self._init_tug_queue(quiet=quiet)
         if not self.quiet:
-            print(f"[STUB] tugs are simulated - feed lines via simulate_activity()")
+            print(f" [STUB] tugs are simulated - feed lines via simulate_activity()")
 
     # read_activity() comes from _TugQueue (earlier in the MRO than
     # StripStub's always-None version).
@@ -111,7 +111,7 @@ class TugStub(_TugQueue):
         self.quiet = quiet
         self._init_tug_queue(quiet=quiet)
         if not self.quiet:
-            print(f"[STUB] STUB_TUG is set - strip commands go to '{self.port}', "
+            print(f" [STUB] STUB_TUG is set - strip commands go to '{self.port}', "
                   f"tugs are simulated via simulate_activity()")
 
     def send_command(self, start, end, r, g, b):
