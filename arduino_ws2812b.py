@@ -95,8 +95,9 @@ class ArduinoStrip:
         cmd = f">{start} {end} {r} {g} {b}<"
         self.ser.write(cmd.encode("ascii"))
         self.ser.flush()
+        # This will swallow any activity like pulls and releases
         while (line := self.read_activity()) is not None:
-            print(f"  <- {line}")
+            print(f"  <- {line}", end='\r')
 
     def read_activity(self):
         """Return the next line from the Arduino, or None if nothing is waiting."""
@@ -131,12 +132,12 @@ def get_controller(port=None):
     """Return a controller based on the STUB_* environment variables.
 
     STUB_ARDUINO  - full stub (StubStrip): prints strip commands, tug
-                    readings are simulated; no serial port is opened at
+                    events are simulated; no serial port is opened at
                     all, so the script can run without the device.
     STUB_STRIP    - only the strip is stubbed (StripStub): send_command()
                     prints instead of sending; no serial port; no tugs.
     STUB_TUG      - only the tugging is stubbed (TugStub): strip commands
-                    go to the real Arduino; tug readings are injected via
+                    go to the real Arduino; tug events are injected via
                     simulate_activity() instead of being read from serial.
     (none set)    - real ArduinoStrip.
     """

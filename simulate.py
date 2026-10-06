@@ -1,6 +1,6 @@
 """
 Simulation harness for pacer.py: runs the Pacer and feeds simulated tug
-readings (on TAB) into the strip via simulate_activity().
+events (on TAB) into the strip via simulate_activity().
 
 The stubbing is chosen by the STUB_* environment variables (see
 get_controller() in arduino_ws2812b):
@@ -16,13 +16,12 @@ get_controller() in arduino_ws2812b):
 
 So STUB_STRIP + STUB_TUG together behave like STUB_ARDUINO.
 
-Tug control:
-    Hold the TAB key  -> the pull reading rises toward 300 (the tug).
-    Release TAB       -> the pull reading falls back toward 10 (the release).
+Tug control (mimics the E18-D80NK on the Arduino):
+    Hold the TAB key  -> the sensor goes proximal: a '!L' line (the pull).
+    Release TAB       -> the sensor goes clear:    a '!R' line (the release).
 
-The key state is *peeked* every 250 ms (never blocking/waiting for input),
-and a reading is only queued when the value actually changes - so once the
-pull reaches the 300 or 10 limit, nothing more is sent until it moves again.
+The key state is *peeked* every 250 ms (never blocking/waiting for input);
+only the edges are queued, so nothing is sent while TAB stays held or up.
 
 Usage:
     python simulate.py
@@ -42,10 +41,6 @@ from pacer import Pacer
 from churn import make_story
 
 POLL_INTERVAL_S = 0.25  # peek the TAB key every 250 ms
-
-PULL_MIN = 10
-PULL_MAX = 300
-PULL_STEP = 40          # pull change per 250 ms tick while rising/falling
 
 
 # ---------------------------------------------------------------------- #
@@ -89,43 +84,21 @@ def make_tab_peek():
 # ---------------------------------------------------------------------- #
 
 def feed_tugs(strip):
-    """Background thread that watches TAB and queues readings shaped like
-    the Arduino would send: '!<pull>' lines.
-
-    While TAB is held the pull climbs to PULL_MAX; on release it decays to
-    PULL_MIN. Values are only queued when they change."""
+    """Background thread that watches TAB and queues event lines shaped
+    like the Arduino would send: '!L' while TAB is held (the sensor sees
+    the audience), '!R' when it is released (the sensor goes clear).
+    Only the edges are queued - holding TAB does not repeat."""
     is_tab_held = make_tab_peek()
 
     def feed():
-        pull = PULL_MIN
-        last_queued = None
         was_held = False
-        announced_max = announced_min = False
 
         while True:
             held = is_tab_held()
             if held != was_held:
                 print(f"[sim] TAB {'pressed - tugging' if held else 'released'}")
+                strip.simulate_activity("!L" if held else "!R")
                 was_held = held
-
-            if held:
-                announced_min = False
-                if pull < PULL_MAX:
-                    pull = min(pull + PULL_STEP, PULL_MAX)
-                    if pull == PULL_MAX and not announced_max:
-                        print(f"[sim] pull at max ({PULL_MAX}) - holding")
-                        announced_max = True
-            else:
-                announced_max = False
-                if pull > PULL_MIN:
-                    pull = max(pull - PULL_STEP, PULL_MIN)
-                    if pull == PULL_MIN and not announced_min:
-                        print(f"[sim] pull at rest ({PULL_MIN})")
-                        announced_min = True
-
-            if pull != last_queued:
-                strip.simulate_activity(f"!{pull}")
-                last_queued = pull
 
             time.sleep(POLL_INTERVAL_S)
 

@@ -7,9 +7,9 @@ arduino_ws2812b):
 
     STUB_STRIP    - stub only the strip functionality: send_command()
                     prints what it would send, no serial port is opened.
-                    read_activity() always returns None (no tugs).
+                    read_activity() always returns None (no tug events).
     STUB_TUG      - stub only the tugging: strip commands are sent to the
-                    real Arduino, but tug readings are injected via
+                    real Arduino, but tug events are injected via
                     simulate_activity() instead of being read from the
                     serial port.
     STUB_ARDUINO  - stub the whole thing: no serial port is opened at all
@@ -83,7 +83,7 @@ class StripStub:
 
 class StubStrip(_TugQueue, StripStub):
     """Full stub (STUB_ARDUINO): prints strip commands and queues simulated
-    tug readings fed in via simulate_activity(). No serial port involved."""
+    tug events fed in via simulate_activity(). No serial port involved."""
 
     def __init__(self, port=None, quiet=False):
         StripStub.__init__(self, port=port, quiet=quiet)
@@ -97,7 +97,7 @@ class StubStrip(_TugQueue, StripStub):
 
 class TugStub(_TugQueue):
     """Stubs only the tug side (STUB_TUG): wraps a real ArduinoStrip so
-    send_command() reaches the actual device, while tug readings are
+    send_command() reaches the actual device, while tug events are
     injected via simulate_activity(). When the queue is empty,
     read_activity() falls through to the serial port (draining any ack
     lines the Arduino sent)."""

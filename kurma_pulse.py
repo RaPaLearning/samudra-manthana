@@ -9,14 +9,14 @@ from arduino_ws2812b import get_controller
 
 # Brown hue as normalized ratios (R > G > B, warm/chocolate tone).
 # The final RGB = ratio * brightness, so brightness 120 -> max channel 120.
-COLOR_RATIO = (1.0, 1.0, 1.0)
+COLOR_RATIO = (1.0, 0.7, 0.0)
 MAX_BRIGHT = 200
 
 LED_START = 8
 LED_END = 70  # NUM_LEDS - 1 in the .ino
 
-BRIGHTNESS_MIN = 5
-BRIGHTNESS_MAX = 120
+BRIGHTNESS_MIN = 0
+BRIGHTNESS_MAX = 170
 PULSE_PERIOD_S = 4.0  # seconds for a full down->up->down cycle
 STEP_DELAY_S = 0.05 # 20 Hz refresh
 
@@ -62,7 +62,8 @@ def pulse(start=LED_START, end=LED_END, period=PULSE_PERIOD_S,
     finally:
         # Turn the LEDs off before exiting
         try:
-            strip.send_command(start, end, 0, 0, 0)
+            print("Turning off LEDs.")
+            for _ in range(3): strip.send_command(start, end, 0, 0, 0)
         except Exception:
             pass
         strip.close()
