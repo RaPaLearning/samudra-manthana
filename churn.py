@@ -13,7 +13,9 @@ TUG_START when the tug begins and TUG_END when it ends.
 
 from pacer import TUG_START
 from play_media import Media
-from kurma_pulse import background_pulse
+from kurma_pulse import regular_sea_churn, poison_sea_churn
+
+import time
 
 TURTLE_PURR = "media/turtle-purr.mp3"
 NEELAKANTHA = "media/neelakantha.mp4"
@@ -33,29 +35,53 @@ def make_story():
         if event == TUG_START:
             print("[story] first purr starts")
             purr.play()
-            background_pulse(rgb_ratio=(1.0, 0.5, 0.17), pulses=2)  # ~ #7F3F16 scaled
+            regular_sea_churn()
 
     def step_haalahala(event):
         if event == TUG_START:
             print("[story] second purr starts")
             purr.play()
-            background_pulse(rgb_ratio=(1.0, 0.0, 1.0), pulses=2)  # purple
+            poison_sea_churn()
 
     def step_neelakantha(event):
         if event == TUG_START:
-            print("[story] neelakantha video starts")
-            neelakantha_video.play()
+            print("[story] neelakantha")
 
     def step_danvantri_rakshasa(event):
         if event == TUG_START:
-            print("[story] danvantri amruta rakshasa video starts")
-            danvantri_rakshasa_video.play()
+            print("[story] danvantri")
 
     def step_mohini_returns(event):
         if event == TUG_START:
-            print("[story] mohini returns video starts")
-            mohini_returns_video.play()
+            print("[story] mohini returns")
 
     return [step_just_churn, step_haalahala, step_neelakantha, 
             step_just_churn, step_danvantri_rakshasa,
             step_just_churn, step_mohini_returns]
+
+
+def main(step_index=None):
+    """Play every story step, waiting between steps.
+
+    If step_index is given (1-based, from the command line),
+    execute only that step and return."""
+    steps = make_story()
+    if step_index is not None:
+        i = step_index - 1
+        if not 0 <= i < len(steps):
+            raise SystemExit(f"step {step_index} out of range (1..{len(steps)})")
+        print(f"[main] step {i}: {steps[i].__name__}")
+        steps[i](TUG_START)
+        time.sleep(15)
+        return
+    for i, step in enumerate(steps):
+        print(f"[main] step {i}: {step.__name__}")
+        step(TUG_START)
+        if i < len(steps) - 1:
+            time.sleep(15)
+
+
+if __name__ == "__main__":
+    import sys
+
+    main(int(sys.argv[1]) if len(sys.argv) > 1 else None)
