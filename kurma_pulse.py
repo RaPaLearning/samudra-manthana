@@ -6,7 +6,7 @@ import threading
 import time
 
 from arduino_ws2812b import disconnect_controller, get_controller
-from led_indexes import LED_START, LED_END, WAVE1_RIGHT, WAVE2_RIGHT
+from led_indexes import LED_START, LED_END, SEA_START, SEA_END
 from led_colors import SEA_COLOR_RATIO, POISON_COLOR_RATIO, MAX_ALLOWED_BRIGHT, BRIGHTNESS_MIN, BRIGHTNESS_MAX
 
 PULSE_PERIOD_S = 1.0  # seconds for a full down->up->down cycle
@@ -69,10 +69,10 @@ def background_pulse(start=LED_START, end=LED_END, period=PULSE_PERIOD_S,
     return t
 
 def regular_sea_churn():
-    return background_pulse(start=WAVE1_RIGHT, end=WAVE2_RIGHT, rgb_ratio=SEA_COLOR_RATIO, pulses=6)
+    return background_pulse(start=SEA_START, end=SEA_END, rgb_ratio=SEA_COLOR_RATIO, pulses=6)
 
 def poison_sea_churn():
-    return background_pulse(start=WAVE1_RIGHT, end=WAVE2_RIGHT, rgb_ratio=POISON_COLOR_RATIO, pulses=6)
+    return background_pulse(start=SEA_START, end=SEA_END, rgb_ratio=POISON_COLOR_RATIO, pulses=6)
 
 def main():
     ap = argparse.ArgumentParser(description="Pulse WS2812B strip")

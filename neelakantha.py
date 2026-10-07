@@ -4,25 +4,41 @@ import threading
 
 from arduino_ws2812b import disconnect_controller, get_controller
 from led_colors import SEA_COLOR_LOW, POISON_COLOR_MAX
-from led_indexes import WAVE1_RIGHT, WAVE2_RIGHT, WAVE1_LEFT, WAVE2_LEFT, SHIVA_PATH_START, SHIVA_PATH_END
+from led_indexes import SEA_START, SEA_END, SHIVA_ENTRY_END, SHIVA_ENTRY_START, SHIVA_PATH_START, SHIVA_PATH_END, SHIVA_THROAT_START, SHIVA_THROAT_END
+from kurma_pulse import pulse, SEA_COLOR_RATIO
+
+def shiva_entry_sync():
+    try:
+        strip = get_controller()  # waits for the Arduino 'ready' banner
+    except RuntimeError as e:
+        sys.exit(f"Error: {e}")
+    for _ in range(24):
+        print('calling neelakantha')
+        strip.send_command(SHIVA_ENTRY_START, SHIVA_ENTRY_END, 170, 0, 0)
+        time.sleep(0.3)
+        strip.send_command(SHIVA_ENTRY_START, SHIVA_ENTRY_END, 0, 0, 0)
+        time.sleep(0.3)
+
+def shiva_entry():
+    t = threading.Thread(target=shiva_entry_sync)
+    t.start()
+    return t
 
 def neelakantha_drinks_sync():
     try:
         strip = get_controller()  # waits for the Arduino 'ready' banner
     except RuntimeError as e:
         sys.exit(f"Error: {e}")
-    strip.send_command(16, 140, 170, 0, 170)
+    strip.send_command(SEA_START, SEA_END, 170, 0, 170)
     time.sleep(1)
-    steps = 25
-    wave1_step = (WAVE1_LEFT - WAVE1_RIGHT) / steps
-    wave2_step = (WAVE2_RIGHT - WAVE2_LEFT) / steps
+    steps = 100
+    sea_step = (SEA_END - SEA_START) / steps
     drink_step = (SHIVA_PATH_END - SHIVA_PATH_START) / steps
-    strip.send_command(WAVE1_LEFT, WAVE2_LEFT, SEA_COLOR_LOW[0], SEA_COLOR_LOW[1], SEA_COLOR_LOW[2])
     for i in range(steps):
         progress = (i + 1) / steps
         time.sleep(0.1)
         strip.send_command(
-            int(WAVE1_LEFT - wave1_step * (i + 1)), int(WAVE2_LEFT + wave2_step * (i + 1)),
+            SEA_START, int(SEA_START + sea_step * (i + 1)),
             SEA_COLOR_LOW[0], SEA_COLOR_LOW[1], SEA_COLOR_LOW[2]
         )
         time.sleep(0.1)
@@ -31,11 +47,16 @@ def neelakantha_drinks_sync():
             POISON_COLOR_MAX[0], POISON_COLOR_MAX[1], POISON_COLOR_MAX[2]
         )
 
-    strip.send_command(16, 140, 0, 0, 0)
-    print('done sending commands')
+    strip.send_command(SEA_START, SEA_END, 0, 0, 0)
+    strip.send_command(SHIVA_PATH_START, SHIVA_PATH_END, 0, 0, 0)
+    strip.send_command(SHIVA_THROAT_START, SHIVA_THROAT_END, 170, 0, 170)
+    time.sleep(1)
+    pulse(start=SEA_START, end=SEA_END, rgb_ratio=SEA_COLOR_RATIO, period=2, pulses=6)
 
 def neelakantha_drinks():
-    return threading.Thread(target=neelakantha_drinks_sync).start()
+    t = threading.Thread(target=neelakantha_drinks_sync)
+    t.start()
+    return t
 
 if __name__ == "__main__":
     try:

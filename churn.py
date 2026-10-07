@@ -14,37 +14,46 @@ TUG_START when the tug begins and TUG_END when it ends.
 from pacer import TUG_START
 from play_media import Media
 from kurma_pulse import regular_sea_churn, poison_sea_churn
-from neelakantha import neelakantha_drinks
+from neelakantha import shiva_entry, neelakantha_drinks
 
 import time
 
 TURTLE_PURR = "media/turtle-purr.mp3"
-NEELAKANTHA = "media/neelakantha.mp4"
-DANVANTRI_AMRUTA_RAKSHASA = "media/danvantri-amruta-rakshasa.mp4"
-MOHINI_RETURNS = "media/mohini-return.mp4"
-
+HISSING_POISON = "media/hissing-poison.mp3"
+NEELAKANTHA_CALL = "media/srikantha.mp3"
+NAMAMEESHAM = "media/namameesham.mp3"
 
 def make_story():
     """Return the churn story steps: the Media objects are created once,
     up front, and each step starts its media on TUG_START."""
     purr = Media(TURTLE_PURR)
+    hiss = Media(HISSING_POISON)
+    neelakantha_call = Media(NEELAKANTHA_CALL)
+    namameesham = Media(NAMAMEESHAM)
 
     def step_just_churn(event):
         if event == TUG_START:
-            print("[story] first purr starts")
+            print("[story] first tug")
             purr.play()
-            regular_sea_churn()
+            return regular_sea_churn()
 
     def step_haalahala(event):
         if event == TUG_START:
-            print("[story] second purr starts")
-            purr.play()
-            poison_sea_churn()
+            print("[story] poison release")
+            hiss.play()
+            return poison_sea_churn()
+
+    def call_neelakantha(event):
+        if event == TUG_START:
+            print("[story] calling neelakantha")
+            neelakantha_call.play()
+            return shiva_entry()
 
     def step_neelakantha(event):
         if event == TUG_START:
             print("[story] neelakantha")
-            neelakantha_drinks()
+            namameesham.play()
+            return neelakantha_drinks()
 
     def step_danvantri_rakshasa(event):
         if event == TUG_START:
@@ -54,9 +63,8 @@ def make_story():
         if event == TUG_START:
             print("[story] mohini returns")
 
-    return [step_just_churn, step_haalahala, step_neelakantha, 
-            step_just_churn, step_danvantri_rakshasa,
-            step_just_churn, step_mohini_returns]
+    return [step_just_churn, step_haalahala, call_neelakantha, step_neelakantha, 
+            step_just_churn, step_danvantri_rakshasa, step_mohini_returns]
 
 
 def main(step_index=None):
@@ -70,14 +78,17 @@ def main(step_index=None):
         if not 0 <= i < len(steps):
             raise SystemExit(f"step {step_index} out of range (1..{len(steps)})")
         print(f"[main] step {i}: {steps[i].__name__}")
-        steps[i](TUG_START)
-        time.sleep(15)
+        t = steps[i](TUG_START)
+        if t is not None:
+            t.join()
+        time.sleep(1)
         return
     for i, step in enumerate(steps):
         print(f"[main] step {i}: {step.__name__}")
-        step(TUG_START)
-        if i < len(steps) - 1:
-            time.sleep(15)
+        t = step(TUG_START)
+        if t is not None:
+            t.join()
+        print("---")
 
 
 if __name__ == "__main__":
