@@ -14,6 +14,7 @@ TUG_START when the tug begins and TUG_END when it ends.
 from pacer import TUG_START
 from play_media import Media
 from kurma_pulse import regular_sea_churn, poison_sea_churn
+from neelakantha import neelakantha_drinks
 
 import time
 
@@ -27,9 +28,6 @@ def make_story():
     """Return the churn story steps: the Media objects are created once,
     up front, and each step starts its media on TUG_START."""
     purr = Media(TURTLE_PURR)
-    neelakantha_video = Media(NEELAKANTHA, fullscreen=True)
-    danvantri_rakshasa_video = Media(DANVANTRI_AMRUTA_RAKSHASA, fullscreen=True)
-    mohini_returns_video = Media(MOHINI_RETURNS, fullscreen=True)
 
     def step_just_churn(event):
         if event == TUG_START:
@@ -46,6 +44,7 @@ def make_story():
     def step_neelakantha(event):
         if event == TUG_START:
             print("[story] neelakantha")
+            neelakantha_drinks()
 
     def step_danvantri_rakshasa(event):
         if event == TUG_START:

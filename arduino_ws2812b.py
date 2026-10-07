@@ -15,6 +15,7 @@ Requires:
 """
 
 import os
+import time
 
 from serial.tools import list_ports
 
@@ -25,7 +26,11 @@ except ImportError:  # allow importing the stub without pyserial installed
 
 BAUD_RATE = 9600
 
-__all__ = ["ArduinoStrip", "get_controller", "find_arduino", "BAUD_RATE"]
+# Singleton cache for get_controller(): one controller per process.
+_controller = None
+_controller_key = None
+
+__all__ = ["ArduinoStrip", "get_controller", "disconnect_controller", "find_arduino", "BAUD_RATE"]
 
 
 def find_arduino(vid_pids=(("1A86", "7523"),   # CH340 clone (most Nanos)
@@ -88,7 +93,24 @@ class ArduinoStrip:
             else:
                 cls._ser = serial.Serial(port, BAUD_RATE, timeout=1)
             self.ser = cls._ser
+            # Opening the port toggles DTR, which resets the Nano; the
+            # bootloader needs ~1.5-2 s before the sketch listens. Any
+            # command sent before that is silently lost, so wait for the
+            # sketch's 'ready' banner before returning.
+            self._wait_for_ready()
         self.port = self.ser.port
+
+    def _wait_for_ready(self, timeout=5.0):
+        """Block until the sketch's 'ready' banner arrives (or timeout)."""
+        print("Waiting for Arduino to be ready...")
+        t0 = time.monotonic()
+        while time.monotonic() - t0 < timeout:
+            line = self.read_activity()
+            if line is not None and "ready" in line:
+                print("Arduino is ready.")
+                return
+            time.sleep(0.05)
+        print("Warning: no 'ready' banner from Arduino; continuing anyway.")
 
     def send_command(self, start, end, r, g, b):
         """Send '>start end R G B<' and drain any acknowledgment lines."""
@@ -129,7 +151,8 @@ class ArduinoStrip:
 
 
 def get_controller(port=None):
-    """Return a controller based on the STUB_* environment variables.
+    """Return a (process-wide singleton) controller based on the STUB_*
+    environment variables.
 
     STUB_ARDUINO  - full stub (StubStrip): prints strip commands, tug
                     events are simulated; no serial port is opened at
@@ -140,14 +163,42 @@ def get_controller(port=None):
                     go to the real Arduino; tug events are injected via
                     simulate_activity() instead of being read from serial.
     (none set)    - real ArduinoStrip.
+
+    The same instance is returned for repeated calls (keyed on which
+    stub mode is active), so every part of a program shares one
+    connection and one wait-for-ready. Use disconnect_controller() to
+    close it.
     """
     # Imported lazily: arduino_stub imports ArduinoStrip from this module.
     from arduino_stub import StripStub, StubStrip, TugStub
 
+    global _controller, _controller_key
     if os.environ.get("STUB_ARDUINO"):
-        return StubStrip(port=port)
-    if os.environ.get("STUB_STRIP"):
-        return StripStub(port=port)
-    if os.environ.get("STUB_TUG"):
-        return TugStub(port=port)
-    return ArduinoStrip(port=port)
+        key, cls = "arduino", StubStrip
+    elif os.environ.get("STUB_STRIP"):
+        key, cls = "strip", StripStub
+    elif os.environ.get("STUB_TUG"):
+        key, cls = "tug", TugStub
+    else:
+        key, cls = "real", ArduinoStrip
+
+    if _controller is None or _controller_key != key:
+        _controller = cls(port=port)
+        _controller_key = key
+    return _controller
+
+
+def disconnect_controller():
+    """Close the shared controller from get_controller(). Safe for stubs
+    (their close() is a no-op) and for the real ArduinoStrip (closes the
+    shared serial connection)."""
+    global _controller
+    if _controller is None:
+        return
+    try:
+        if isinstance(_controller, ArduinoStrip):
+            _controller.disconnect()
+        else:
+            _controller.close()
+    finally:
+        _controller = None

@@ -5,35 +5,12 @@ import sys
 import threading
 import time
 
-from arduino_ws2812b import get_controller
+from arduino_ws2812b import disconnect_controller, get_controller
+from led_indexes import LED_START, LED_END, WAVE1_RIGHT, WAVE2_RIGHT
+from led_colors import SEA_COLOR_RATIO, POISON_COLOR_RATIO, MAX_ALLOWED_BRIGHT, BRIGHTNESS_MIN, BRIGHTNESS_MAX
 
-# The final RGB = ratio * brightness, so brightness 120 -> max channel 120.
-SEA_COLOR_RATIO = (1.0, 0.7, 0.0)     # can also try ~brown #7F3F16 scaled (1.0, 0.5, 0.17)
-POISON_COLOR_RATIO = (1.0, 0.0, 1.0)  # purple
-
-MAX_BRIGHT = 200
-
-LED_START = 8
-LED_END = 240  # NUM_LEDS - 1 in the .ino
-
-WAVE1_RIGHT = 16
-WAVE1_LEFT = 70
-WAVE2_LEFT = 71
-WAVE2_RIGHT = 140
-SHIVA_PATH_START = 141
-SHIVA_PATH_END = 170
-VISHNU_PATH_START = 298
-VISHNU_PATH_END = 240
-
-BRIGHTNESS_MIN = 0
-BRIGHTNESS_MAX = 170
 PULSE_PERIOD_S = 1.0  # seconds for a full down->up->down cycle
 STEP_DELAY_S = 0.05 # 20 Hz refresh
-
-DRAIN_DURATION_S = 6.0 # total duration of the drain sweep in seconds
-FILL_DELAY_S = 1.5     # pause after the initial purple fill
-DRAIN_HOLD_S = 1.5     # how long to hold the final state before clearing the path
-OFF = (0.0, 0.0, 0.0)
 
 
 def pulse(start=LED_START, end=LED_END, period=PULSE_PERIOD_S,
@@ -43,6 +20,10 @@ def pulse(start=LED_START, end=LED_END, period=PULSE_PERIOD_S,
 
     pulses: number of full down->up->down cycles to run.
     None (default) pulses endlessly until Ctrl+C.
+
+    Owns nothing: does not catch KeyboardInterrupt and does not close
+    the strip. The caller (e.g. main(), or the churn story) handles
+    interrupts and disconnect_controller().
     """
     try:
         strip = get_controller()
@@ -54,34 +35,23 @@ def pulse(start=LED_START, end=LED_END, period=PULSE_PERIOD_S,
           + (f", {pulses} pulse(s)" if pulses is not None else " endlessly.")
           + " Ctrl+C to stop.")
 
-    try:
-        t0 = time.monotonic()
-        n = 0
-        while pulses is None or n < pulses:
-            # Cosine pulse: 0 at min, pi at min -> smooth up and back down
-            phase = (time.monotonic() - t0) % period / period * 2 * math.pi
-            brightness = (bmin + bmax) / 2 + \
-                (bmax - bmin) / 2 * (-math.cos(phase))
-            brightness = int(round(brightness))
+    t0 = time.monotonic()
+    n = 0
+    while pulses is None or n < pulses:
+        # Cosine pulse: 0 at min, pi at min -> smooth up and back down
+        phase = (time.monotonic() - t0) % period / period * 2 * math.pi
+        brightness = (bmin + bmax) / 2 + \
+            (bmax - bmin) / 2 * (-math.cos(phase))
+        brightness = int(round(brightness))
 
-            r = min(MAX_BRIGHT, int(round(rgb_ratio[0] * brightness)))
-            g = min(MAX_BRIGHT, int(round(rgb_ratio[1] * brightness)))
-            b = min(MAX_BRIGHT, int(round(rgb_ratio[2] * brightness)))
+        r = min(MAX_ALLOWED_BRIGHT, int(round(rgb_ratio[0] * brightness)))
+        g = min(MAX_ALLOWED_BRIGHT, int(round(rgb_ratio[1] * brightness)))
+        b = min(MAX_ALLOWED_BRIGHT, int(round(rgb_ratio[2] * brightness)))
 
-            strip.send_command(start, end, r, g, b)
-            time.sleep(STEP_DELAY_S)
-            if (time.monotonic() - t0) >= (n + 1) * period:
-                n += 1
-    except KeyboardInterrupt:
-        print("\nStopped by user.")
-    finally:
-        # Turn the LEDs off before exiting
-        try:
-            print("Turning off LEDs.")
-            for _ in range(3): strip.send_command(start, end, 0, 0, 0)
-        except Exception:
-            pass
-        strip.close()
+        strip.send_command(start, end, r, g, b)
+        time.sleep(STEP_DELAY_S)
+        if (time.monotonic() - t0) >= (n + 1) * period:
+            n += 1
 
 
 def background_pulse(start=LED_START, end=LED_END, period=PULSE_PERIOD_S,
@@ -114,7 +84,22 @@ def main():
     ap.add_argument("--pulses", type=int, default=None,
                     help="Number of pulse cycles (default: endless)")
     args = ap.parse_args()
-    pulse(args.start, args.end, args.period, args.bmin, args.bmax, SEA_COLOR_RATIO, args.pulses)
+    try:
+        pulse(args.start, args.end, args.period, args.bmin, args.bmax,
+              SEA_COLOR_RATIO, args.pulses)
+    except KeyboardInterrupt:
+        print("\nStopped by user.")
+    finally:
+        # Turn the LEDs off and close the connection before exiting.
+        try:
+            print("Turning off LEDs.")
+            strip = get_controller()
+            for _ in range(3):
+                strip.send_command(args.start, args.end, 0, 0, 0)
+            time.sleep(0.1)  # let the off commands drain before closing
+            disconnect_controller()
+        except Exception as e:
+            print(f"Cleanup failed: {e}")
 
 
 if __name__ == "__main__":
