@@ -22,6 +22,7 @@ TURTLE_PURR = "media/turtle-purr.mp3"
 HISSING_POISON = "media/hissing-poison.mp3"
 NEELAKANTHA_CALL = "media/srikantha.mp3"
 NAMAMEESHAM = "media/namameesham.mp3"
+DHANVANTARI = "media/dhanvantari-mantra.mp3"
 
 def make_story():
     """Return the churn story steps: the Media objects are created once,
@@ -30,6 +31,7 @@ def make_story():
     hiss = Media(HISSING_POISON)
     neelakantha_call = Media(NEELAKANTHA_CALL)
     namameesham = Media(NAMAMEESHAM)
+    dhanvantari = Media(DHANVANTARI)
 
     def step_just_churn(event):
         if event == TUG_START:
@@ -58,6 +60,8 @@ def make_story():
     def step_danvantri_rakshasa(event):
         if event == TUG_START:
             print("[story] danvantri")
+            dhanvantari.play()
+            return dhanvantari_rocks()
 
     def step_mohini_returns(event):
         if event == TUG_START:
