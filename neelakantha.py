@@ -8,16 +8,7 @@ from led_indexes import SEA_START, SEA_END, SHIVA_ENTRY_END, SHIVA_ENTRY_START, 
 from kurma_pulse import pulse, SEA_COLOR_RATIO
 
 def shiva_entry_sync():
-    try:
-        strip = get_controller()  # waits for the Arduino 'ready' banner
-    except RuntimeError as e:
-        sys.exit(f"Error: {e}")
-    for _ in range(24):
-        print('calling neelakantha')
-        strip.send_command(SHIVA_ENTRY_START, SHIVA_ENTRY_END, 170, 0, 0)
-        time.sleep(0.3)
-        strip.send_command(SHIVA_ENTRY_START, SHIVA_ENTRY_END, 0, 0, 0)
-        time.sleep(0.3)
+    pulse(start=SHIVA_ENTRY_START, end=SHIVA_ENTRY_END, rgb_ratio=(1.0, 0.4, 0), period=2, pulses=6)
 
 def shiva_entry():
     t = threading.Thread(target=shiva_entry_sync)

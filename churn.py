@@ -15,14 +15,17 @@ from pacer import TUG_START
 from play_media import Media
 from kurma_pulse import regular_sea_churn, poison_sea_churn
 from neelakantha import shiva_entry, neelakantha_drinks
+from dhanvantari import dhanvantari_aarati
+from mohini import mohini_rocks
 
 import time
 
 TURTLE_PURR = "media/turtle-purr.mp3"
 HISSING_POISON = "media/hissing-poison.mp3"
 NEELAKANTHA_CALL = "media/srikantha.mp3"
-NAMAMEESHAM = "media/namameesham.mp3"
-DHANVANTARI = "media/dhanvantari-mantra.mp3"
+NAMAMEESHAM_STOTRA = "media/namameesham.mp3"
+DHANVANTARI_STOTRA = "media/dhanvantari-mantra.mp3"
+KURMA_MANGALA = "media/kurma-mangala.mp3"
 
 def make_story():
     """Return the churn story steps: the Media objects are created once,
@@ -30,8 +33,9 @@ def make_story():
     purr = Media(TURTLE_PURR)
     hiss = Media(HISSING_POISON)
     neelakantha_call = Media(NEELAKANTHA_CALL)
-    namameesham = Media(NAMAMEESHAM)
-    dhanvantari = Media(DHANVANTARI)
+    namameesham = Media(NAMAMEESHAM_STOTRA)
+    dhanvantari = Media(DHANVANTARI_STOTRA)
+    kurma_mangala = Media(KURMA_MANGALA)
 
     def step_just_churn(event):
         if event == TUG_START:
@@ -61,11 +65,13 @@ def make_story():
         if event == TUG_START:
             print("[story] danvantri")
             dhanvantari.play()
-            return dhanvantari_rocks()
+            return dhanvantari_aarati()
 
     def step_mohini_returns(event):
         if event == TUG_START:
             print("[story] mohini returns")
+            kurma_mangala.play()
+            return mohini_rocks()
 
     return [step_just_churn, step_haalahala, call_neelakantha, step_neelakantha, 
             step_just_churn, step_danvantri_rakshasa, step_mohini_returns]

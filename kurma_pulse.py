@@ -30,7 +30,7 @@ def pulse(start=LED_START, end=LED_END, period=PULSE_PERIOD_S,
     except RuntimeError as e:
         sys.exit(f"Error: {e}")
 
-    print(f"Pulsing LEDs {start}-{end} brown, "
+    print(f"Pulsing LEDs {start}-{end}, "
           f"brightness {bmin}->{bmax}"
           + (f", {pulses} pulse(s)" if pulses is not None else " endlessly.")
           + " Ctrl+C to stop.")
