@@ -3,9 +3,10 @@ import time
 
 from arduino_ws2812b import get_controller
 from led_indexes import PATH_END, SEA_START
+from pacer import TUG_START
 
 
-def reset():
+def switch_off(stat=TUG_START):
     try:
         strip = get_controller()  # waits for the Arduino 'ready' banner
     except RuntimeError as e:
@@ -15,4 +16,4 @@ def reset():
     time.sleep(0.3)
 
 if __name__ == "__main__":
-    reset()
+    switch_off()

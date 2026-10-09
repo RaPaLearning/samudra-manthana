@@ -40,9 +40,12 @@ def neelakantha_drinks_sync():
 
     strip.send_command(SEA_START, SEA_END, 0, 0, 0)
     strip.send_command(SHIVA_PATH_START, SHIVA_PATH_END, 0, 0, 0)
-    strip.send_command(SHIVA_THROAT_START, SHIVA_THROAT_END, 170, 0, 170)
-    time.sleep(1)
+    time.sleep(0.2)
+    strip.send_command(SHIVA_ENTRY_START, SHIVA_ENTRY_END, 20, 0, 180)
+    time.sleep(0.2)
     pulse(start=SEA_START, end=SEA_END, rgb_ratio=SEA_COLOR_RATIO, period=2, pulses=6)
+    time.sleep(0.6)
+    strip.send_command(SHIVA_ENTRY_START, SHIVA_ENTRY_END, 0, 0, 0)
 
 def neelakantha_drinks():
     t = threading.Thread(target=neelakantha_drinks_sync)

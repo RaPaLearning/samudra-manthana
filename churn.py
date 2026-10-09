@@ -17,6 +17,7 @@ from kurma_pulse import regular_sea_churn, poison_sea_churn
 from neelakantha import shiva_entry, neelakantha_drinks
 from dhanvantari import dhanvantari_aarati
 from mohini import mohini_rocks
+from reset import switch_off
 
 import time
 
@@ -74,10 +75,11 @@ def make_story():
             return mohini_rocks()
 
     return [step_just_churn, step_haalahala, call_neelakantha, step_neelakantha, 
-            step_just_churn, step_danvantri_rakshasa, step_mohini_returns]
+            step_just_churn, step_danvantri_rakshasa, step_mohini_returns, 
+            switch_off]
 
 
-def main(step_index=None):
+def run_in_sequence(step_index=None):
     """Play every story step, waiting between steps.
 
     If step_index is given (1-based, from the command line),
@@ -104,4 +106,4 @@ def main(step_index=None):
 if __name__ == "__main__":
     import sys
 
-    main(int(sys.argv[1]) if len(sys.argv) > 1 else None)
+    run_in_sequence(int(sys.argv[1]) if len(sys.argv) > 1 else None)
