@@ -11,15 +11,16 @@ def dhanvantari_aarati_sync():
     except RuntimeError as e:
         sys.exit(f"Error: {e}")
     strip.send_command(SEA_START, SEA_END, 100, 78, 0)
-    aarati_pos = DHANVANTARI_PATH_END
-    prev_aarati_pos = DHANVANTARI_PATH_END
-    for _ in range(3 * (DHANVANTARI_PATH_END - DHANVANTARI_PATH_START)):
-        strip.send_command(prev_aarati_pos, prev_aarati_pos + 1, 0, 0, 0)
+    aarati_pos = DHANVANTARI_PATH_END - 2  # 3-LED group, leading LED at the path end
+    aarati_tail = aarati_pos + 2
+    for _ in range(3 * (DHANVANTARI_PATH_END - DHANVANTARI_PATH_START - 2)):
+        strip.send_command(aarati_tail, aarati_tail, 0, 0, 0)  # blank only the trailing LED
         time.sleep(0.1)
-        strip.send_command(aarati_pos, aarati_pos + 1, 200, 156, 0)
+        strip.send_command(aarati_pos, aarati_pos + 2, 200, 156, 0)
         time.sleep(0.2)
-        prev_aarati_pos = aarati_pos
-        aarati_pos = DHANVANTARI_PATH_END if aarati_pos == DHANVANTARI_PATH_START else aarati_pos - 1
+        aarati_tail = aarati_pos + 2
+        aarati_pos = DHANVANTARI_PATH_END - 2 if aarati_pos == DHANVANTARI_PATH_START else aarati_pos - 1
+    time.sleep(2.5)
     strip.send_command(DHANVANTARI_PATH_START, DHANVANTARI_PATH_END + 1, 0, 0, 0)
 
 def dhanvantari_aarati():

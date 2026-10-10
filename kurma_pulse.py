@@ -74,6 +74,9 @@ def regular_sea_churn():
 def poison_sea_churn():
     return background_pulse(start=SEA_START, end=SEA_END, rgb_ratio=POISON_COLOR_RATIO, pulses=6)
 
+def continue_sea_churn():
+    return background_pulse(start=SEA_START, end=SEA_END, rgb_ratio=SEA_COLOR_RATIO, pulses=12)
+
 def main():
     ap = argparse.ArgumentParser(description="Pulse WS2812B strip")
     ap.add_argument("--start", type=int, default=LED_START)

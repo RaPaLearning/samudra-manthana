@@ -13,8 +13,9 @@ TUG_START when the tug begins and TUG_END when it ends.
 
 from pacer import TUG_START
 from play_media import Media
-from kurma_pulse import regular_sea_churn, poison_sea_churn
+from kurma_pulse import regular_sea_churn, poison_sea_churn, continue_sea_churn
 from neelakantha import shiva_entry, neelakantha_drinks
+from kurma_oli import churn_with_oli
 from dhanvantari import dhanvantari_aarati
 from mohini import mohini_rocks
 from reset import switch_off
@@ -25,18 +26,23 @@ TURTLE_PURR = "media/turtle-purr.mp3"
 HISSING_POISON = "media/hissing-poison.mp3"
 NEELAKANTHA_CALL = "media/srikantha.mp3"
 NAMAMEESHAM_STOTRA = "media/namameesham.mp3"
+CONTINUE_CHURN = "media/aaru-malai.mp3"
 DHANVANTARI_STOTRA = "media/dhanvantari-mantra.mp3"
-KURMA_MANGALA = "media/kurma-mangala.mp3"
+MOHINI_MANGALA = "media/mohini-mangala.mp3"
+
+print("Initializing media...")
+purr = Media(TURTLE_PURR)
+hiss = Media(HISSING_POISON)
+neelakantha_call = Media(NEELAKANTHA_CALL)
+namameesham = Media(NAMAMEESHAM_STOTRA)
+continue_churn = Media(CONTINUE_CHURN)
+dhanvantari = Media(DHANVANTARI_STOTRA)
+mohini_mangala = Media(MOHINI_MANGALA)
+print('Media done')
 
 def make_story():
     """Return the churn story steps: the Media objects are created once,
     up front, and each step starts its media on TUG_START."""
-    purr = Media(TURTLE_PURR)
-    hiss = Media(HISSING_POISON)
-    neelakantha_call = Media(NEELAKANTHA_CALL)
-    namameesham = Media(NAMAMEESHAM_STOTRA)
-    dhanvantari = Media(DHANVANTARI_STOTRA)
-    kurma_mangala = Media(KURMA_MANGALA)
 
     def step_just_churn(event):
         if event == TUG_START:
@@ -62,6 +68,12 @@ def make_story():
             namameesham.play()
             return neelakantha_drinks()
 
+    def step_continue_churn(event):
+        if event == TUG_START:
+            print("[story] continue churn")
+            continue_churn.play()
+            return churn_with_oli()
+        
     def step_danvantri_rakshasa(event):
         if event == TUG_START:
             print("[story] danvantri")
@@ -71,11 +83,11 @@ def make_story():
     def step_mohini_returns(event):
         if event == TUG_START:
             print("[story] mohini returns")
-            kurma_mangala.play()
+            mohini_mangala.play()
             return mohini_rocks()
 
     return [step_just_churn, step_haalahala, call_neelakantha, step_neelakantha, 
-            step_just_churn, step_danvantri_rakshasa, step_mohini_returns, 
+            step_continue_churn, step_danvantri_rakshasa, step_mohini_returns, 
             switch_off]
 
 

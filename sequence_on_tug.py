@@ -1,15 +1,24 @@
 import sys
 import time
+import keyboard
 from churn import run_in_sequence
 from arduino_ws2812b import disconnect_controller, get_controller
 
 valid_inputs = ['!L', '!R', None]
+SPACE_TRIGGER = '!SPACE'
 
 def wait_for_user_action(arduino):
     while True:
+        # Backup trigger: space-bar (polled, non-blocking)
+        if keyboard.is_pressed('space'):
+            # wait for release so a single press fires only once
+            while keyboard.is_pressed('space'):
+                time.sleep(0.05)
+            return SPACE_TRIGGER
         line = arduino.read_activity()
         if line in valid_inputs:
             return line
+        time.sleep(0.05)
 
 
 def main():
