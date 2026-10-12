@@ -28,7 +28,7 @@ def main():
     try:
         while True:
             new_line = wait_for_user_action(arduino)
-            if new_line:
+            if new_line is not None and "!L" in new_line:
                 print(f"New line: {new_line}")
                 run_in_sequence()
                 time.sleep(5) # to prevent immediate starting/looping
